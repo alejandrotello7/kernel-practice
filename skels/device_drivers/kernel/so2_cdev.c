@@ -17,11 +17,11 @@
 
 MODULE_DESCRIPTION("SO2 character device");
 MODULE_AUTHOR("SO2");
-MODULE_LICENSE("GPL"); //Needed in order to avoid complains when the module is loaded.
+MODULE_LICENSE("GPL"); /* Needed in order to avoid complains when the module is loaded. */
 
 #define LOG_LEVEL	KERN_INFO
 
-//Ideally I should've chosed Major and Minor dynamically.
+/* Ideally I should've chosed Major and Minor dynamically. */
 #define MY_MAJOR		42
 #define MY_MINOR		0
 
@@ -37,14 +37,14 @@ MODULE_LICENSE("GPL"); //Needed in order to avoid complains when the module is l
 
 struct so2_device_data {
 	/* TODO 2: add cdev member */
-	struct cdev cdev;
+	struct cdev cdev; /* char device structure */
 	/* TODO 4: add buffer with BUFSIZ elements */
 	char buffer[BUFSIZ];
 	size_t size;
 	/* TODO 7: extra members for home */
 	/* TODO 3: add atomic_t access variable to keep track if file is opened */
 	atomic_t access;
-}; //Structure that holds the data of my device
+}; /* Structure that holds the data of my device */
 
 struct so2_device_data devs[NUM_MINORS];
 
@@ -53,10 +53,10 @@ static int so2_cdev_open(struct inode *inode, struct file *file)
 	struct so2_device_data *data;
 
 	/* TODO 2: print message when the device file is open. */
-	printk(LOG_LEVEL "open called\n");
+	printk(LOG_LEVEL "open function called\n");
 	/* TODO 3: inode->i_cdev contains our cdev struct, use container_of to obtain a pointer to so2_device_data */
-	data = container_of(inode->i_cdev, struct so2_device_data, cdev);
-	file->private_data = data;
+	data = container_of(inode->i_cdev, struct so2_device_data, cdev); /* Macro that returns a pointer to my desired structure */
+	file->private_data = data; /* For easier access in the future , not relevant atm */ 
 
 	/* TODO 3: return immediately if access is != 0, use atomic_cmpxchg */
 	if (atomic_cmpxchg(&data->access, 0, 1) != 0)
@@ -72,7 +72,7 @@ static int
 so2_cdev_release(struct inode *inode, struct file *file)
 {
 	/* TODO 2: print message when the device file is closed. */
-	printk(LOG_LEVEL "closed called\n");
+	printk(LOG_LEVEL "closed  function called\n");
 
 #ifndef EXTRA
 	struct so2_device_data *data =
@@ -147,7 +147,7 @@ so2_cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 static const struct file_operations so2_fops = {
-	.owner = THIS_MODULE, //Just a pointer to the module that owns the structure. 
+	.owner = THIS_MODULE, /* Just a pointer to the module that owns the structure. */
 
 /* TODO 2: add open and release functions */
 	.open = so2_cdev_open,
@@ -186,8 +186,8 @@ err = register_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR),
 		/* TODO 3: set access variable to 0, use atomic_set */
 		atomic_set(&devs[i].access, 0);
 		/* TODO 2: init and add cdev to kernel core */
-		cdev_init(&devs[i].cdev, &so2_fops);
-		cdev_add(&devs[i].cdev, MKDEV(MY_MAJOR, i), 1);
+		cdev_init(&devs[i].cdev, &so2_fops); /* embed my device-specific structure to the cdev struc. */
+		cdev_add(&devs[i].cdev, MKDEV(MY_MAJOR, i), 1); /* tell the kernel about it. */
 	}
 
 	return 0;
@@ -207,5 +207,5 @@ static void so2_cdev_exit(void)
 
 }
 
-module_init(so2_cdev_init); //Special Kernel Macros
-module_exit(so2_cdev_exit); //Special Kernel Macros
+module_init(so2_cdev_init); /* Special Kernel Macros */
+module_exit(so2_cdev_exit); /* Special Kernel Macros */
