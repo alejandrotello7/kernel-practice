@@ -44,7 +44,7 @@ struct so2_device_data {
 	/* TODO 7: extra members for home */
 	/* TODO 3: add atomic_t access variable to keep track if file is opened */
 	atomic_t access;
-};
+}; //Structure that holds the data of my device
 
 struct so2_device_data devs[NUM_MINORS];
 
@@ -147,7 +147,8 @@ so2_cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 static const struct file_operations so2_fops = {
-	.owner = THIS_MODULE,
+	.owner = THIS_MODULE, //Just a pointer to the module that owns the structure. 
+
 /* TODO 2: add open and release functions */
 	.open = so2_cdev_open,
 	.release = so2_cdev_release,
