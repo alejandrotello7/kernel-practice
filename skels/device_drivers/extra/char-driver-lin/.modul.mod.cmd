@@ -1,0 +1,1 @@
+cmd_/home/atello/linux/tools/labs/skels/./device_drivers/extra/char-driver-lin/modul.mod := { echo  /home/atello/linux/tools/labs/skels/./device_drivers/extra/char-driver-lin/modul.o;  echo; } > /home/atello/linux/tools/labs/skels/./device_drivers/extra/char-driver-lin/modul.mod

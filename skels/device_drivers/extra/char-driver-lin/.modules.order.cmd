@@ -1,0 +1,1 @@
+cmd_/home/atello/linux/tools/labs/skels/./device_drivers/extra/char-driver-lin/modules.order := {   echo /home/atello/linux/tools/labs/skels/./device_drivers/extra/char-driver-lin/modul.ko; :; } | awk '!x[$$0]++' - > /home/atello/linux/tools/labs/skels/./device_drivers/extra/char-driver-lin/modules.order

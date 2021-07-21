@@ -1,0 +1,1 @@
+cmd_/home/atello/linux/tools/labs/skels/Module.symvers := sed 's/ko$$/o/' /home/atello/linux/tools/labs/skels/modules.order | scripts/mod/modpost   -E  -o /home/atello/linux/tools/labs/skels/Module.symvers -e -i Module.symvers   -T -

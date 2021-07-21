@@ -1,0 +1,1 @@
+cmd_/home/atello/linux/tools/labs/skels/./device_drivers/kernel/so2_cdev.mod := { echo  /home/atello/linux/tools/labs/skels/./device_drivers/kernel/so2_cdev.o;  echo; } > /home/atello/linux/tools/labs/skels/./device_drivers/kernel/so2_cdev.mod
