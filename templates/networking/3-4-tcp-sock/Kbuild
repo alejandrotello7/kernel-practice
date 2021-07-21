@@ -1,3 +1,0 @@
-EXTRA_CFLAGS = -Wall -g
-
-obj-m        = tcp_sock.o
