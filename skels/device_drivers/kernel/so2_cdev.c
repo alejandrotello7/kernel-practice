@@ -50,12 +50,11 @@ static void testerMethod(void){
 	xa_store(&array,index,p,gfp);
 	int *returnedValue = xa_load(&array,index);
 	bool valor = xa_empty(&array);
-	char message[]= "fallo";
+	char message[]= "failed";
 	
 	printk("%s\n" ,message );
 	printk("%d\n", valor);
 	printk("%d\n", *returnedValue);
-
 
 } 
 
