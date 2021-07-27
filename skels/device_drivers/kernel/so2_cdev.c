@@ -12,6 +12,8 @@
 #include <linux/uaccess.h>
 #include <linux/sched.h>
 #include <linux/wait.h>
+#include <linux/xarray.h>
+
 
 #include "../include/so2_cdev.h"
 
@@ -30,9 +32,33 @@ MODULE_LICENSE("GPL"); /* Needed in order to avoid complains when the module is 
 #define MESSAGE			"I'm inside the device\n"
 #define IOCTL_MESSAGE		"Hello ioctl"
 
+
+
+
+
+
 #ifndef BUFSIZ
 #define BUFSIZ		4096
 #endif
+static void testerMethod(void){
+	int a = 10;
+	void *p = &a;
+	gfp_t gfp;
+	struct xarray array;
+	xa_init(&array);
+	unsigned long index = 0;
+	xa_store(&array,index,p,gfp);
+	int *returnedValue = xa_load(&array,index);
+	bool valor = xa_empty(&array);
+	char message[]= "fallo";
+	
+	printk("%s\n" ,message );
+	printk("%d\n", valor);
+	printk("%d\n", *returnedValue);
+
+
+} 
+
 
 
 struct so2_device_data {
@@ -63,8 +89,8 @@ static int so2_cdev_open(struct inode *inode, struct file *file)
 		return -EBUSY;
 
 	set_current_state(TASK_INTERRUPTIBLE);
-	schedule_timeout(10);
-
+	schedule_timeout(10);	
+	
 	return 0;
 }
 
@@ -82,6 +108,7 @@ so2_cdev_release(struct inode *inode, struct file *file)
 	atomic_set(&data->access, 0);
 #endif
 	return 0;
+	
 }
 
 static ssize_t
@@ -116,11 +143,28 @@ so2_cdev_write(struct file *file,
 
 	/* TODO 5: copy user_buffer to data->buffer, use copy_from_user */
 		size = (*offset + size > BUFSIZ) ? (BUFSIZ - *offset) : size;
-	if (copy_from_user(data->buffer + *offset, user_buffer, size) != 0)
-		return -EFAULT;
+	/*if (copy_from_user(data->buffer + *offset, user_buffer, size) != 0)
+		return -EFAULT;*/
+	
+	gfp_t gfp;
+	struct xarray *array = (struct xarray *) file->private_data;
+	
+	xa_init(array);
+	copy_from_user(data->buffer + *offset, user_buffer, size);
+	xa_store(array,*offset,user_buffer,gfp);
+	int *returnedValue = xa_load(array,*offset);
+	bool valor = xa_empty(array);
+	char message[]= "fallo";
+	
+	printk("%s\n" ,message );
+	printk("%d\n", valor);
+	printk("%d\n", *returnedValue);
 	*offset += size;
 	data->size = *offset;
 	/* TODO 7: extra tasks for home */
+
+
+
 
 	return size;
 }
@@ -164,6 +208,8 @@ static int so2_cdev_init(void)
 {
 	int err;
 	int i;
+	testerMethod();
+
 
 	/* TODO 1: register char device region for MY_MAJOR and NUM_MINORS starting at MY_MINOR */
 err = register_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR),
@@ -204,6 +250,7 @@ static void so2_cdev_exit(void)
 
 	/* TODO 1 unregister char device region, for MY_MAJOR and NUM_MINORS starting at MY_MINOR */
 	unregister_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR), NUM_MINORS);
+	
 
 }
 
