@@ -49,11 +49,11 @@ static void testerMethod(void){
 	unsigned long index = 0;
 	xa_store(&array,index,p,gfp);
 	int *returnedValue = xa_load(&array,index);
-	bool valor = xa_empty(&array);
+	bool isEmpty = xa_empty(&array);
 	char message[]= "failed";
 	
 	printk("%s\n" ,message );
-	printk("%d\n", valor);
+	printk("%d\n", isEmpty);
 	printk("%d\n", *returnedValue);
 
 } 
@@ -150,13 +150,14 @@ so2_cdev_write(struct file *file,
 	
 	xa_init(array);
 	copy_from_user(data->buffer + *offset, user_buffer, size);
+	
 	xa_store(array,*offset,user_buffer,gfp);
 	int *returnedValue = xa_load(array,*offset);
-	bool valor = xa_empty(array);
+	bool isEmpty = xa_empty(array);
 	char message[]= "fallo";
 	
 	printk("%s\n" ,message );
-	printk("%d\n", valor);
+	printk("%d\n", isEmpty);
 	printk("%d\n", *returnedValue);
 	*offset += size;
 	data->size = *offset;
