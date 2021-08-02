@@ -1,7 +1,7 @@
 /*
- * Character device drivers lab
+ * Character device drivers task
  *
- * All tasks
+ * 
  */
 
 #include <linux/module.h>
@@ -13,8 +13,6 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/xarray.h>
-
-
 #include "../include/so2_cdev.h"
 
 MODULE_DESCRIPTION("SO2 character device");
@@ -22,25 +20,12 @@ MODULE_AUTHOR("SO2");
 MODULE_LICENSE("GPL"); /* Needed in order to avoid complains when the module is loaded. */
 
 #define LOG_LEVEL	KERN_INFO
-
-#define MY_MAJOR		42
-#define MY_MINOR		0
-
-#define NUM_MINORS		1
 #define MODULE_NAME		"so2_cdev"
-#define MESSAGE			"I'm inside the device\n"
-#define IOCTL_MESSAGE		"Hello ioctl"
-
-
-
-
-
-
-
-#ifndef BUFSIZ
+#define DEVICENAME "so2_cdev"
 #define BUFSIZ		4096
+dev_t dev_num;          /* will hold the major number that the kernel gives*/
+int major_number;   
 
-#endif
 static void testerMethod(void){
 	char a[] = "tester";
 	void *p = &a;
@@ -52,39 +37,30 @@ static void testerMethod(void){
 	char *returnedValue = xa_load(&array,index);
 	bool isEmpty = xa_empty(&array);
 	char message[]= "failed";
-	
 	printk("%s\n" ,message );
 	printk("%d\n", isEmpty);
 	printk("%s\n", returnedValue);
 
 } 
 
-
-
 struct so2_device_data {
-	/* TODO 2: add cdev member */
 	struct cdev cdev; /* char device structure */
-	/* TODO 4: add buffer with BUFSIZ elements */
 	char buffer[BUFSIZ];
 	size_t size;
-	/* TODO 7: extra members for home */
-	/* TODO 3: add atomic_t access variable to keep track if file is opened */
 	atomic_t access;
 }; /* Structure that holds the data of my device */
 
-struct so2_device_data devs[NUM_MINORS];
+struct so2_device_data devs;
 
 static int so2_cdev_open(struct inode *inode, struct file *file)
 {
 	struct so2_device_data *data;
 
-	/* TODO 2: print message when the device file is open. */
 	printk(LOG_LEVEL "open device\n");
-	/* TODO 3: inode->i_cdev contains our cdev struct, use container_of to obtain a pointer to so2_device_data */
 	data = container_of(inode->i_cdev, struct so2_device_data, cdev); /* Macro that returns a pointer to my desired structure */
 	file->private_data = data; /* For easier access in the future , not relevant atm */ 
 
-	/* TODO 3: return immediately if access is != 0, use atomic_cmpxchg */
+	/*  return immediately if access is != 0, use atomic_cmpxchg */
 	if (atomic_cmpxchg(&data->access, 0, 1) != 0)
 		return -EBUSY;
 
@@ -97,14 +73,13 @@ static int so2_cdev_open(struct inode *inode, struct file *file)
 static int
 so2_cdev_release(struct inode *inode, struct file *file)
 {
-	/* TODO 2: print message when the device file is closed. */
 	printk(LOG_LEVEL "closed device\n");
 
 #ifndef EXTRA
 	struct so2_device_data *data =
 		(struct so2_device_data *) file->private_data;
 
-	/* TODO 3: reset access variable to 0, use atomic_set */
+	/*reset access variable to 0, use atomic_set */
 	atomic_set(&data->access, 0);
 #endif
 	return 0;
@@ -119,12 +94,6 @@ so2_cdev_read(struct file *file,
 	struct so2_device_data *data =
 		(struct so2_device_data *) file->private_data;
 	size_t to_read;
-
-#ifdef EXTRA
-	/* TODO 7: extra tasks for home */
-#endif
-
-	/* TODO 4: Copy data->buffer to user_buffer, use copy_to_user */
 	to_read = (size > data->size - *offset) ? (data->size - *offset) : size;
 	if (copy_to_user(user_buffer, data->buffer + *offset, to_read) != 0)
 		return -EFAULT;
@@ -198,39 +167,14 @@ static loff_t so2_cdev_lseek(struct file *file, loff_t offset, int orig){
 }
 }
 
-static long
-so2_cdev_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-{
-	struct so2_device_data *data =
-		(struct so2_device_data *) file->private_data;
-	int ret = 0;
-	int remains;
-
-	switch (cmd) {
-	/* TODO 6: if cmd = MY_IOCTL_PRINT, display IOCTL_MESSAGE */
-	case MY_IOCTL_PRINT:
-		printk(LOG_LEVEL "%s\n", IOCTL_MESSAGE);
-		break;
-	/* TODO 7: extra tasks, for home */
-	default:
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
 
 static const struct file_operations so2_fops = {
 	.owner = THIS_MODULE, /* Just a pointer to the module that owns the structure. */
 
-/* TODO 2: add open and release functions */
 	.open = so2_cdev_open,
 	.release = so2_cdev_release,
-/* TODO 4: add read function */
 	.read = so2_cdev_read,
-/* TODO 5: add write function */
 	.write = so2_cdev_write,
-/* TODO 6: add ioctl function */
-	.unlocked_ioctl = so2_cdev_ioctl,
 	.llseek = so2_cdev_lseek
 };
 
@@ -240,52 +184,39 @@ static int so2_cdev_init(void)
 	int i;
 	testerMethod();
 
-
-	/* TODO 1: register char device region for MY_MAJOR and NUM_MINORS starting at MY_MINOR */
-err = register_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR),
-			NUM_MINORS, MODULE_NAME);
-	if (err != 0) {
-		pr_info("register chrdevice region");
+/*err = register_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR),
+			NUM_MINORS, MODULE_NAME); */
+err = alloc_chrdev_region(&dev_num, 0, 1, DEVICENAME);
+	if (err < 0) {
+		pr_info("Can't allocate chrdevice region");
+		printk("error");
 		return err;
-	}
-
-
-	for (i = 0; i < NUM_MINORS; i++) {
-#ifdef EXTRA
-		/* TODO 7: extra tasks, for home */
-#else
-		/*TODO 4: initialize buffer with MESSAGE string */
+	}else{
+		printk(KERN_INFO " charDev : mjor number allocated succesful\n");
+        major_number = MAJOR(dev_num);
+		  printk(KERN_INFO "charDev : major number of our device is %d\n", major_number);
+        printk(KERN_INFO "charDev : to use mknod /dev/%s c %d 0\n", DEVICENAME, major_number);
 		/*memcpy(devs[i].buffer, MESSAGE, sizeof(MESSAGE));
 		devs[i].size = sizeof(MESSAGE);*/
-#endif
-		/* TODO 7: extra tasks for home */
-		/* TODO 3: set access variable to 0, use atomic_set */
-		atomic_set(&devs[i].access, 0);
-		/* TODO 2: init and add cdev to kernel core */
-		cdev_init(&devs[i].cdev, &so2_fops); /* embed my device-specific structure to the cdev struc. */
-		cdev_add(&devs[i].cdev, MKDEV(MY_MAJOR, i), 1); /* tell the kernel about it. */
+
+		atomic_set(&devs.access, 0);
+		cdev_init(&devs.cdev, &so2_fops); /* embed my device-specific structure to the cdev struc. */
+		cdev_add(&devs.cdev, dev_num, 1); /* tell the kernel about it. */
 	}
+
+	
 
 	return 0;
 }
 
 static void so2_cdev_exit(void)
 {
-	int i;
-
-	for (i = 0; i < NUM_MINORS; i++) {
-		/* TODO 2: delete cdev from kernel core */
-		cdev_del(&devs[i].cdev);
-	}
-
-	/* TODO 1 unregister char device region, for MY_MAJOR and NUM_MINORS starting at MY_MINOR */
-	unregister_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR), NUM_MINORS);
-	
-
+	cdev_del(&devs.cdev);
+	unregister_chrdev_region(dev_num, 1);
 }
 
 module_init(so2_cdev_init); /* Special Kernel Macros */
 module_exit(so2_cdev_exit); /* Special Kernel Macros */
 
-/* mknod /dev/so2_cdev c 42 0 */ 
+
 

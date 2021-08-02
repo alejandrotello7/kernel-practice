@@ -4,10 +4,9 @@
 #include <malloc.h>
 
 
-#define DEVICE "/dev/so2_cdevs"
+#define DEVICE "/dev/so2_cdev"
 
 int debug = 1, fd = 0;
-// Test
 int ppos = 0;
 
 int write_device()
@@ -127,9 +126,6 @@ int main()
                         close(fd); /*closing the device*/
                         break;
                 case 2 : printf("read option selected\n");
-                        /* dont know why but i am suppoesed to open it for
-                        writing and close it, i cant keep  open and read.
-                        its not working, need to sort out why is that so */
                         fd = open(DEVICE, O_RDWR);
                         read_device();
                         close(fd); /*closing the device*/
