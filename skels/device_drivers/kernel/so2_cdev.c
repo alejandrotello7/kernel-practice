@@ -184,8 +184,6 @@ static int so2_cdev_init(void)
 	int i;
 	testerMethod();
 
-/*err = register_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR),
-			NUM_MINORS, MODULE_NAME); */
 err = alloc_chrdev_region(&dev_num, 0, 1, DEVICENAME);
 	if (err < 0) {
 		pr_info("Can't allocate chrdevice region");
@@ -194,18 +192,12 @@ err = alloc_chrdev_region(&dev_num, 0, 1, DEVICENAME);
 	}else{
 		printk(KERN_INFO " charDev : mjor number allocated succesful\n");
         major_number = MAJOR(dev_num);
-		  printk(KERN_INFO "charDev : major number of our device is %d\n", major_number);
+		printk(KERN_INFO "charDev : major number of our device is %d\n", major_number);
         printk(KERN_INFO "charDev : to use mknod /dev/%s c %d 0\n", DEVICENAME, major_number);
-		/*memcpy(devs[i].buffer, MESSAGE, sizeof(MESSAGE));
-		devs[i].size = sizeof(MESSAGE);*/
-
 		atomic_set(&devs.access, 0);
 		cdev_init(&devs.cdev, &so2_fops); /* embed my device-specific structure to the cdev struc. */
 		cdev_add(&devs.cdev, dev_num, 1); /* tell the kernel about it. */
 	}
-
-	
-
 	return 0;
 }
 
