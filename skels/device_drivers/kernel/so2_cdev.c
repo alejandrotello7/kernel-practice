@@ -23,7 +23,6 @@ MODULE_LICENSE("GPL"); /* Needed in order to avoid complains when the module is 
 
 #define LOG_LEVEL	KERN_INFO
 
-/* Ideally I should've chosed Major and Minor dynamically. */
 #define MY_MAJOR		42
 #define MY_MINOR		0
 
@@ -37,24 +36,26 @@ MODULE_LICENSE("GPL"); /* Needed in order to avoid complains when the module is 
 
 
 
+
 #ifndef BUFSIZ
 #define BUFSIZ		4096
+
 #endif
 static void testerMethod(void){
-	int a = 10;
+	char a[] = "tester";
 	void *p = &a;
 	gfp_t gfp;
 	struct xarray array;
 	xa_init(&array);
 	unsigned long index = 0;
 	xa_store(&array,index,p,gfp);
-	int *returnedValue = xa_load(&array,index);
+	char *returnedValue = xa_load(&array,index);
 	bool isEmpty = xa_empty(&array);
 	char message[]= "failed";
 	
 	printk("%s\n" ,message );
 	printk("%d\n", isEmpty);
-	printk("%d\n", *returnedValue);
+	printk("%s\n", returnedValue);
 
 } 
 
@@ -78,7 +79,7 @@ static int so2_cdev_open(struct inode *inode, struct file *file)
 	struct so2_device_data *data;
 
 	/* TODO 2: print message when the device file is open. */
-	printk(LOG_LEVEL "open function called\n");
+	printk(LOG_LEVEL "open device\n");
 	/* TODO 3: inode->i_cdev contains our cdev struct, use container_of to obtain a pointer to so2_device_data */
 	data = container_of(inode->i_cdev, struct so2_device_data, cdev); /* Macro that returns a pointer to my desired structure */
 	file->private_data = data; /* For easier access in the future , not relevant atm */ 
@@ -97,7 +98,7 @@ static int
 so2_cdev_release(struct inode *inode, struct file *file)
 {
 	/* TODO 2: print message when the device file is closed. */
-	printk(LOG_LEVEL "closed  function called\n");
+	printk(LOG_LEVEL "closed device\n");
 
 #ifndef EXTRA
 	struct so2_device_data *data =
@@ -138,35 +139,63 @@ so2_cdev_write(struct file *file,
 {
 	struct so2_device_data *data =
 		(struct so2_device_data *) file->private_data;
-
-
-	/* TODO 5: copy user_buffer to data->buffer, use copy_from_user */
-		size = (*offset + size > BUFSIZ) ? (BUFSIZ - *offset) : size;
+		printk("%lld Offset before \n", *offset);
+		printk("%d Data size before \n", data->size);
+char *temp_buffer[BUFSIZ];
+	
+	size = (*offset + size > BUFSIZ) ? (BUFSIZ - *offset) : size;
 	/*if (copy_from_user(data->buffer + *offset, user_buffer, size) != 0)
 		return -EFAULT;*/
+	//copy_from_user(data->buffer + *offset, user_buffer, size);
+	//copy_from_user(temp_buffer + *offset, user_buffer, size);
+	//gfp_t GFP_KERNEL;
 	
-	gfp_t gfp;
-	struct xarray *array = (struct xarray *) file->private_data;
+	struct xarray array;
+	xa_init(&array);	
 	
-	xa_init(array);
+	printk("%d Sizes before \n", size);
 	copy_from_user(data->buffer + *offset, user_buffer, size);
+	copy_from_user(temp_buffer + *offset, user_buffer, size);
+	//printk(" %s : VALOR ANTES DE ARRAY \n" ,data->buffer + *offset);
+	//char *p = data->buffer;
+	//printk("%s: VALOR DESPUES DE ARRAY \n" ,p );
+	char *beforeValue = data->buffer + *offset;
 	
-	xa_store(array,*offset,user_buffer,gfp);
-	int *returnedValue = xa_load(array,*offset);
-	bool isEmpty = xa_empty(array);
-	char message[]= "fallo";
+	xa_store(&array,*offset,data->buffer,GFP_KERNEL);
+	char *returnedValue = xa_load(&array,*offset);
+	bool isEmpty = xa_empty(&array);
 	
-	printk("%s\n" ,message );
-	printk("%d\n", isEmpty);
-	printk("%d\n", *returnedValue);
 	*offset += size;
 	data->size = *offset;
-	/* TODO 7: extra tasks for home */
-
-
-
-
+	printk("Beforep value:%s\n", beforeValue);
+	printk("Returned value:%s\n", returnedValue);
+	printk("%lld Offset after \n", *offset);
+	printk("%d Data size after \n", data->size);
 	return size;
+}
+
+static loff_t so2_cdev_lseek(struct file *file, loff_t offset, int orig){
+	{
+        loff_t new_pos = 0;
+        printk("lseek function in work\n");
+        switch (orig) {
+        case 0 :        /*seek set*/
+                new_pos = offset;
+                break;
+        case 1 :        /*seek cur*/
+                new_pos = file->f_pos + offset;
+                break;
+        case 2 :        /*seek end*/
+                new_pos = BUFFER_SIZE - offset;
+                break;
+        }
+        if (new_pos > BUFFER_SIZE)
+                new_pos = BUFFER_SIZE;
+        if (new_pos < 0)
+                new_pos = 0;
+        file->f_pos = new_pos;
+        return new_pos;
+}
 }
 
 static long
@@ -202,6 +231,7 @@ static const struct file_operations so2_fops = {
 	.write = so2_cdev_write,
 /* TODO 6: add ioctl function */
 	.unlocked_ioctl = so2_cdev_ioctl,
+	.llseek = so2_cdev_lseek
 };
 
 static int so2_cdev_init(void)
@@ -225,8 +255,8 @@ err = register_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR),
 		/* TODO 7: extra tasks, for home */
 #else
 		/*TODO 4: initialize buffer with MESSAGE string */
-		memcpy(devs[i].buffer, MESSAGE, sizeof(MESSAGE));
-		devs[i].size = sizeof(MESSAGE);
+		/*memcpy(devs[i].buffer, MESSAGE, sizeof(MESSAGE));
+		devs[i].size = sizeof(MESSAGE);*/
 #endif
 		/* TODO 7: extra tasks for home */
 		/* TODO 3: set access variable to 0, use atomic_set */
@@ -256,3 +286,6 @@ static void so2_cdev_exit(void)
 
 module_init(so2_cdev_init); /* Special Kernel Macros */
 module_exit(so2_cdev_exit); /* Special Kernel Macros */
+
+/* mknod /dev/so2_cdev c 42 0 */ 
+
