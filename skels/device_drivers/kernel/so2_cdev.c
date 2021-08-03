@@ -26,29 +26,14 @@ MODULE_LICENSE("GPL"); /* Needed in order to avoid complains when the module is 
 dev_t dev_num;          /* will hold the major number that the kernel gives*/
 int major_number;   
 
-static void testerMethod(void){
-	char a[] = "tester";
-	void *p = &a;
-	gfp_t gfp;
-	struct xarray array;
-	xa_init(&array);
-	unsigned long index = 0;
-	xa_store(&array,index,p,gfp);
-	char *returnedValue = xa_load(&array,index);
-	bool isEmpty = xa_empty(&array);
-	char message[]= "failed";
-	printk("%s\n" ,message );
-	printk("%d\n", isEmpty);
-	printk("%s\n", returnedValue);
 
-} 
-
+/* Structure that holds the data of my device */
 struct so2_device_data {
 	struct cdev cdev; /* char device structure */
 	char buffer[BUFSIZ];
 	size_t size;
 	atomic_t access;
-}; /* Structure that holds the data of my device */
+}; 
 
 struct so2_device_data devs;
 
@@ -64,8 +49,9 @@ static int so2_cdev_open(struct inode *inode, struct file *file)
 	if (atomic_cmpxchg(&data->access, 0, 1) != 0)
 		return -EBUSY;
 
-	set_current_state(TASK_INTERRUPTIBLE);
-	schedule_timeout(10);	
+	/*set_current_state(TASK_INTERRUPTIBLE);
+	schedule_timeout(10);*/
+	schedule_timeout_interruptible(10);	
 	
 	return 0;
 }
@@ -108,38 +94,21 @@ so2_cdev_write(struct file *file,
 {
 	struct so2_device_data *data =
 		(struct so2_device_data *) file->private_data;
-		printk("%lld Offset before \n", *offset);
-		printk("%d Data size before \n", data->size);
-char *temp_buffer[BUFSIZ];
+		char *temp_buffer[BUFSIZ];
 	
 	size = (*offset + size > BUFSIZ) ? (BUFSIZ - *offset) : size;
-	/*if (copy_from_user(data->buffer + *offset, user_buffer, size) != 0)
-		return -EFAULT;*/
-	//copy_from_user(data->buffer + *offset, user_buffer, size);
-	//copy_from_user(temp_buffer + *offset, user_buffer, size);
-	//gfp_t GFP_KERNEL;
-	
+
 	struct xarray array;
 	xa_init(&array);	
-	
-	printk("%d Sizes before \n", size);
-	copy_from_user(data->buffer + *offset, user_buffer, size);
-	copy_from_user(temp_buffer + *offset, user_buffer, size);
-	//printk(" %s : VALOR ANTES DE ARRAY \n" ,data->buffer + *offset);
-	//char *p = data->buffer;
-	//printk("%s: VALOR DESPUES DE ARRAY \n" ,p );
-	char *beforeValue = data->buffer + *offset;
-	
+	if (copy_from_user(data->buffer + *offset, user_buffer, size) != 0)
+		return -EFAULT;
 	xa_store(&array,*offset,data->buffer,GFP_KERNEL);
 	char *returnedValue = xa_load(&array,*offset);
-	bool isEmpty = xa_empty(&array);
-	
 	*offset += size;
 	data->size = *offset;
-	printk("Beforep value:%s\n", beforeValue);
 	printk("Returned value:%s\n", returnedValue);
-	printk("%lld Offset after \n", *offset);
-	printk("%d Data size after \n", data->size);
+	printk("%lld Offset \n", *offset);
+	printk("%d Data size \n", data->size);
 	return size;
 }
 
@@ -170,7 +139,6 @@ static loff_t so2_cdev_lseek(struct file *file, loff_t offset, int orig){
 
 static const struct file_operations so2_fops = {
 	.owner = THIS_MODULE, /* Just a pointer to the module that owns the structure. */
-
 	.open = so2_cdev_open,
 	.release = so2_cdev_release,
 	.read = so2_cdev_read,
@@ -182,12 +150,10 @@ static int so2_cdev_init(void)
 {
 	int err;
 	int i;
-	testerMethod();
 
-err = alloc_chrdev_region(&dev_num, 0, 1, DEVICENAME);
+	err = alloc_chrdev_region(&dev_num, 0, 1, DEVICENAME);
 	if (err < 0) {
 		pr_info("Can't allocate chrdevice region");
-		printk("error");
 		return err;
 	}else{
 		printk(KERN_INFO " charDev : mjor number allocated succesful\n");
@@ -209,6 +175,4 @@ static void so2_cdev_exit(void)
 
 module_init(so2_cdev_init); /* Special Kernel Macros */
 module_exit(so2_cdev_exit); /* Special Kernel Macros */
-
-
 
